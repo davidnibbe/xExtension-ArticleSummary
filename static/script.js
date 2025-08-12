@@ -61,7 +61,6 @@ async function summarizeButtonClick(target) {
 
   setOaiState(container, 1, '加载中', null);
 
-  // 这是 php 获取参数的地址 - This is the address where PHP gets the parameters
   var url = target.dataset.request;
   var data = {
     ajax: true,
@@ -69,35 +68,42 @@ async function summarizeButtonClick(target) {
   };
 
   try {
+    console.log("[summarizeButtonClick] Sending POST to:", url, "with data:", data);
     const response = await axios.post(url, data, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
 
+    console.log("[summarizeButtonClick] Raw Axios response:", response);
+
     const xresp = response.data;
-    console.log(xresp);
+    console.log("[summarizeButtonClick] Parsed PHP JSON:", xresp);
 
     if (response.status !== 200 || !xresp.response || !xresp.response.data) {
+      console.warn("[summarizeButtonClick] Invalid structure", { status: response.status, xresp });
       throw new Error('请求失败 / Request Failed');
     }
 
     if (xresp.response.error) {
       setOaiState(container, 2, xresp.response.data, null);
     } else {
-      // 解析 PHP 返回的参数
       const oaiParams = xresp.response.data;
       const oaiProvider = xresp.response.provider;
+      console.log("[summarizeButtonClick] Provider:", oaiProvider, "Params:", oaiParams);
       if (oaiProvider === 'openai') {
         await sendOpenAIRequest(container, oaiParams);
       } else if (oaiProvider === 'ollama') {
         await sendOllamaRequest(container, oaiParams);
       } else if (oaiProvider === 'gemini') {
         await sendGeminiRequest(container, oaiParams);
-}
+      }
     }
   } catch (error) {
-    console.error(error);
+    console.error("[summarizeButtonClick] ERROR:", error);
+    if (error.response) {
+      console.error("Error response data:", error.response.data);
+      console.error("Error status:", error.response.status);
+      console.error("Error headers:", error.response.headers);
+    }
     setOaiState(container, 2, '请求失败 / Request Failed', null);
   }
 }
@@ -108,6 +114,9 @@ async function sendGeminiRequest(container, oaiParams) {
     delete body['oai_url'];
     delete body['oai_key'];
 
+    console.log("[sendGeminiRequest] URL:", oaiParams.oai_url);
+    console.log("[sendGeminiRequest] Body:", body);
+
     const response = await fetch(oaiParams.oai_url, {
       method: 'POST',
       headers: {
@@ -117,25 +126,34 @@ async function sendGeminiRequest(container, oaiParams) {
       body: JSON.stringify(body)
     });
 
+    console.log("[sendGeminiRequest] Raw fetch response:", response);
+
     if (!response.ok) {
+      const text = await response.text();
+      console.error("[sendGeminiRequest] Non-OK HTTP status:", response.status, text);
       throw new Error('请求失败 / Request Failed');
     }
 
     const data = await response.json();
+    console.log("[sendGeminiRequest] Parsed JSON:", data);
+
     const text = data.candidates?.[0]?.content?.parts?.map(p => p.text).join('\n') || '';
     setOaiState(container, 0, 'finish', marked.parse(text));
   } catch (error) {
-    console.error(error);
+    console.error("[sendGeminiRequest] ERROR:", error);
     setOaiState(container, 2, '请求失败 / Request Failed', null);
   }
 }
-
 
 async function sendOpenAIRequest(container, oaiParams) {
   try {
     let body = JSON.parse(JSON.stringify(oaiParams));
     delete body['oai_url'];
-    delete body['oai_key'];	  
+    delete body['oai_key'];
+
+    console.log("[sendOpenAIRequest] URL:", oaiParams.oai_url);
+    console.log("[sendOpenAIRequest] Body:", body);
+
     const response = await fetch(oaiParams.oai_url, {
       method: 'POST',
       headers: {
@@ -145,7 +163,11 @@ async function sendOpenAIRequest(container, oaiParams) {
       body: JSON.stringify(body)
     });
 
+    console.log("[sendOpenAIRequest] Raw fetch response:", response);
+
     if (!response.ok) {
+      const text = await response.text();
+      console.error("[sendOpenAIRequest] Non-OK HTTP status:", response.status, text);
       throw new Error('请求失败 / Request Failed');
     }
 
@@ -160,18 +182,21 @@ async function sendOpenAIRequest(container, oaiParams) {
       }
 
       const chunk = decoder.decode(value, { stream: true });
-      const text = JSON.parse(chunk)?.choices[0]?.message?.content || ''
+      console.log("[sendOpenAIRequest] Received chunk:", chunk);
+      const text = JSON.parse(chunk)?.choices[0]?.message?.content || '';
       setOaiState(container, 0, null, marked.parse(text));
     }
   } catch (error) {
-    console.error(error);
+    console.error("[sendOpenAIRequest] ERROR:", error);
     setOaiState(container, 2, '请求失败 / Request Failed', null);
   }
 }
 
-
-async function sendOllamaRequest(container, oaiParams){
+async function sendOllamaRequest(container, oaiParams) {
   try {
+    console.log("[sendOllamaRequest] URL:", oaiParams.oai_url);
+    console.log("[sendOllamaRequest] Body:", oaiParams);
+
     const response = await fetch(oaiParams.oai_url, {
       method: 'POST',
       headers: {
@@ -181,7 +206,11 @@ async function sendOllamaRequest(container, oaiParams){
       body: JSON.stringify(oaiParams)
     });
 
+    console.log("[sendOllamaRequest] Raw fetch response:", response);
+
     if (!response.ok) {
+      const text = await response.text();
+      console.error("[sendOllamaRequest] Non-OK HTTP status:", response.status, text);
       throw new Error('请求失败 / Request Failed');
     }
   
@@ -197,26 +226,25 @@ async function sendOllamaRequest(container, oaiParams){
         break;
       }
       buffer += decoder.decode(value, { stream: true });
-      // Try to process complete JSON objects from the buffer
+      console.log("[sendOllamaRequest] Current buffer:", buffer);
+
       let endIndex;
-      while ((endIndex = buffer.indexOf('\n')) !== -1) {
+      while ((endIndex = buffer.indexOf('\\n')) !== -1) {
         const jsonString = buffer.slice(0, endIndex).trim();
         try {
           if (jsonString) {
             const json = JSON.parse(jsonString);
-            text += json.response
+            text += json.response;
             setOaiState(container, 0, null, marked.parse(text));
           }
         } catch (e) {
-          // If JSON parsing fails, output the error and keep the chunk for future attempts
-          console.error('Error parsing JSON:', e, 'Chunk:', jsonString);
+          console.error("[sendOllamaRequest] JSON parse error:", e, "Chunk:", jsonString);
         }
-        // Remove the processed part from the buffer
-        buffer = buffer.slice(endIndex + 1); // +1 to remove the newline character
+        buffer = buffer.slice(endIndex + 1);
       }
     }
   } catch (error) {
-    console.error(error);
+    console.error("[sendOllamaRequest] ERROR:", error);
     setOaiState(container, 2, '请求失败 / Request Failed', null);
   }
 }
