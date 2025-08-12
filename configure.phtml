@@ -21,7 +21,7 @@ $oai_provider = FreshRSS_Context::$user_conf->oai_provider ?: 'openai'; // Defau
     <label for="oai_key">API Key</label>
     <input type="text" name="oai_key" id="oai_key" value="<?php echo $oai_key; ?>">
     <label for="gemini_api_key">Gemini API Key</label>
-    <input type="text" name="gemini_api_key" id="gemini_api_key" value="<?= htmlspecialchars($this->getConfigValue('gemini_api_key')) ?>">
+    <input type="text" name="gemini_api_key" id="gemini_api_key" value="<?php echo $gemini_api_key; ?>">
     <label for="oai_model">Model Name</label>
     <input type="text" name="oai_model" id="oai_model" value="<?php echo $oai_model; ?>">
     <label for="oai_prompt">Prompt (add before content)</label>

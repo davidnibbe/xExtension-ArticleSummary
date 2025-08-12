@@ -14,21 +14,37 @@ class FreshExtension_ArticleSummary_Controller extends Minz_ActionController
     $oai_prompt = FreshRSS_Context::$user_conf->oai_prompt;
     $oai_provider = FreshRSS_Context::$user_conf->oai_provider;
 
+    if ($provider === 'openai' || $provider === 'ollama') {
     if (
-      $this->isEmpty($oai_url)
-      || $this->isEmpty($oai_key)
-      || $this->isEmpty($oai_model)
-      || $this->isEmpty($oai_prompt)
+        $this->isEmpty($oai_url)
+        || $this->isEmpty($oai_key)
+        || $this->isEmpty($oai_model)
+        || $this->isEmpty($oai_prompt)
     ) {
-      echo json_encode(array(
-        'response' => array(
-          'data' => 'missing config',
-          'error' => 'configuration'
-        ),
-        'status' => 200
-      ));
-      return;
+        echo json_encode(array(
+            'response' => array(
+                'data' => 'missing config',
+                'error' => 'configuration'
+            ),
+            'status' => 200
+        ));
+        return;
     }
+} elseif ($provider === 'gemini') {
+    if (
+        $this->isEmpty($oai_key)
+        || $this->isEmpty($oai_prompt)
+    ) {
+        echo json_encode(array(
+            'response' => array(
+                'data' => 'missing config',
+                'error' => 'configuration'
+            ),
+            'status' => 200
+        ));
+        return;
+    }
+}
 
     $entry_id = Minz_Request::param('id');
     $entry_dao = FreshRSS_Factory::createEntryDao();
