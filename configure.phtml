@@ -12,8 +12,17 @@ $oai_provider = FreshRSS_Context::$user_conf->oai_provider ?: 'openai'; // Defau
   <select name="oai_provider">
       <option value="openai" <?php echo ($oai_provider == 'openai' ? 'selected' : ''); ?>>OpenAI</option>
       <option value="ollama" <?php echo ($oai_provider == 'ollama' ? 'selected' : ''); ?>>Ollama</option>
+      <option value="gemini" <?php echo ($oai_provider == 'gemini' ? 'selected' : ''); ?>>Gemini</option>
    </select>
- 
+
+   <?php if ($provider === 'gemini'): ?>
+<div>
+    <label for="gemini_api_key">Gemini API Key:</label>
+    <input type="text" name="gemini_api_key" id="gemini_api_key"
+           value="<?= htmlspecialchars($this->getConfigValue('gemini_api_key')) ?>">
+</div>
+<?php endif; ?>
+
  <div id="common_config">
     <label for="oai_url">Base URL (http(s)://oai.com/) without 'v1'</label>
     <input type="text" name="oai_url" id="oai_url" value="<?php echo $oai_url; ?>">

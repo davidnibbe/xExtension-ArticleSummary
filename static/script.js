@@ -90,15 +90,46 @@ async function summarizeButtonClick(target) {
       const oaiProvider = xresp.response.provider;
       if (oaiProvider === 'openai') {
         await sendOpenAIRequest(container, oaiParams);
-      } else {
+      } else if (oaiProvider === 'ollama') {
         await sendOllamaRequest(container, oaiParams);
-      }
+      } else if (oaiProvider === 'gemini') {
+        await sendGeminiRequest(container, oaiParams);
+}
     }
   } catch (error) {
     console.error(error);
     setOaiState(container, 2, '请求失败 / Request Failed', null);
   }
 }
+
+async function sendGeminiRequest(container, oaiParams) {
+  try {
+    let body = JSON.parse(JSON.stringify(oaiParams));
+    delete body['oai_url'];
+    delete body['oai_key'];
+
+    const response = await fetch(oaiParams.oai_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${oaiParams.oai_key}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      throw new Error('请求失败 / Request Failed');
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.map(p => p.text).join('\n') || '';
+    setOaiState(container, 0, 'finish', marked.parse(text));
+  } catch (error) {
+    console.error(error);
+    setOaiState(container, 2, '请求失败 / Request Failed', null);
+  }
+}
+
 
 async function sendOpenAIRequest(container, oaiParams) {
   try {

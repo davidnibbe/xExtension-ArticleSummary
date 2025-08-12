@@ -92,6 +92,27 @@ class FreshExtension_ArticleSummary_Controller extends Minz_ActionController
         'status' => 200
       );
     }
+    elseif ($provider === 'gemini') {
+      $apiKey = $this->getConfigValue('gemini_api_key');
+      $promptText = $this->buildPrompt($articleContent); // same as used for others
+
+      $oaiParams = [
+          'oai_url' => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' . $apiKey,
+          'oai_key' => $apiKey,
+          'contents' => [
+              [
+                  'parts' => [
+                      ['text' => $promptText]
+                  ]
+              ]
+          ]
+      ];
+
+      $response = [
+          'provider' => 'gemini',
+          'data' => $oaiParams
+      ];
+    }
     echo json_encode($successResponse);
     return;
   }
